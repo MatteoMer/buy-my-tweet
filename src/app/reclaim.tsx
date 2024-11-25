@@ -1,14 +1,32 @@
 'use client'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import QRCode from 'react-qr-code';
 import { ReclaimProofRequest, verifyProof } from '@reclaimprotocol/js-sdk';
 
 function ReclaimDemo() {
     const [requestUrl, setRequestUrl] = useState('');
-    const [proofs, setProofs] = useState([]);
+    const [proofs, setProofs] = useState<any[]>([])
     const [username, setUsername] = useState('')
     const [post, setPost] = useState('')
     const [date, setDate] = useState('')
+
+    useEffect(() => {
+        const eventSource = new EventSource('/api/callback');
+
+        eventSource.onmessage = (event) => {
+            const proof = JSON.parse(event.data);
+            setProofs((currentProofs) => [...currentProofs, proof]);
+        };
+
+        eventSource.onerror = (error) => {
+            console.error('EventSource failed:', error);
+            eventSource.close();
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, []);
 
     const getVerificationReq = async () => {
         try {
