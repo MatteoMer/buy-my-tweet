@@ -34,33 +34,32 @@ function ReclaimDemo() {
 
             // Start listening for proof submissions
             await reclaimProofRequest.startSession({
-                onSuccess: async (proofs) => {
-                    if (proofs) {
-                        if (typeof proofs === 'string') {
-                            console.log('SDK Message:', proofs);
-                            setProofs([proofs]);
-                        } else if (typeof proofs !== 'string') {
-                            console.log('Verification success', proofs?.claimData.context);
-                            const context = JSON.parse(proofs?.claimData.context);
+                onSuccess: async (proof) => {
+                    if (proof) {
+                        if (typeof proof === 'string') {
+                            console.log('SDK Message:', proof);
+                        } else if (typeof proof !== 'string') {
+                            console.log('Verification success', proof?.claimData.context);
+                            const context = JSON.parse(proof?.claimData.context);
                             const params = context.extractedParameters;
 
                             setUsername(params.screen_name);
                             setPost(params.full_text);
                             setDate(params.created_at);
 
-                            const isProofVerified = await verifyProof(proofs);
+                            const isProofVerified = await verifyProof(proof);
                             if (!isProofVerified) {
                                 console.error('Proof verification failed');
                                 setUsername('Verification Failed');
                             }
 
-                            // Send proofs to backend for processing
-                            await fetch('/api/reclaim/receive-proofs', {
+                            // Send proof to backend for processing
+                            await fetch('/api/reclaim/receive-proof', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify(proofs),
+                                body: JSON.stringify(proof),
                             });
                         }
                     }
