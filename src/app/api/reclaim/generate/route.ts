@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         )
 
         reclaimProofRequest.setAppCallbackUrl(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/reclaim/receive-proofs`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/reclaim/receive`
         )
 
         const reclaimProofRequestConfig = reclaimProofRequest.toJsonString()
