@@ -3,6 +3,7 @@ import { Proof, verifyProof } from '@reclaimprotocol/js-sdk'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
+    console.log(request)
     try {
         // Parse the JSON body
         const proof: Proof = await request.json()
