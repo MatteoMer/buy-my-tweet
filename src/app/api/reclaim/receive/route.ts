@@ -5,15 +5,14 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
     console.log(request)
     try {
-        // Parse the JSON body
-        const proof: Proof = await request.json()
-
-        // Log the received proofs
+        const rawProof = await request.text();
+        const decodedProof = decodeURIComponent(rawProof);
+        const proof = JSON.parse(decodedProof) as Proof;
         console.log('Received proofs:', proof)
 
         const isProofVerified = await verifyProof(proof)
         if (isProofVerified) {
-            return NextResponse.json({ message: 'Proof verified successfully' }, { status: 200 })
+            return NextResponse.json({ proof: proof }, { status: 200 })
         } else {
             return NextResponse.json({ message: 'Proof is not valid' }, { status: 400 })
         }
