@@ -32,7 +32,6 @@ function ReclaimDemo() {
         try {
             setProofs([]);
 
-            // Fetch the configuration from our backend
             const response = await fetch('/api/reclaim/generate');
             const jsonData = await response.json();
 
@@ -40,17 +39,14 @@ function ReclaimDemo() {
                 throw new Error('Failed to get proof request configuration');
             }
 
-            // Initialize the Reclaim SDK with the configuration from backend
             const reclaimProofRequest = await ReclaimProofRequest.fromJsonString(
                 jsonData.reclaimProofRequestConfig
             );
 
-            // Generate the verification request URL
             const requestUrl = await reclaimProofRequest.getRequestUrl();
             console.log('Request URL:', requestUrl);
             setRequestUrl(requestUrl);
 
-            // Start listening for proof submissions
             await reclaimProofRequest.startSession({
                 onSuccess: async (proof) => {
                     if (proof) {
