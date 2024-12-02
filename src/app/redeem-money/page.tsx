@@ -9,7 +9,17 @@ interface VerificationState {
     username: string;
     post: string;
     date: string;
-    claimableAmount?: number;  // Added claimable amount to store with verification
+    claimableAmount?: number;
+}
+
+interface ProofResponse {
+    success: boolean;
+    claimableAmount: number;
+    tweetData: {
+        screen_name: string;
+        full_text: string;
+        created_at: string;
+    };
 }
 
 export default function RedeemMoneyPage() {
@@ -28,8 +38,23 @@ export default function RedeemMoneyPage() {
         const eventSource = new EventSource('/api/callback');
 
         eventSource.onmessage = (event) => {
-            const proof = JSON.parse(event.data);
-            setProofs((currentProofs) => [...currentProofs, proof]);
+            if (event.data === 'ping') return;
+
+            try {
+                const proofData: ProofResponse = JSON.parse(event.data);
+                if (proofData.success) {
+                    setVerificationState({
+                        isVerified: true,
+                        username: proofData.tweetData.screen_name,
+                        post: proofData.tweetData.full_text,
+                        date: proofData.tweetData.created_at,
+                        claimableAmount: proofData.claimableAmount
+                    });
+                    setIsProcessing(false);
+                }
+            } catch (error) {
+                console.error('Error parsing SSE data:', error);
+            }
         };
 
         eventSource.onerror = (error) => {
@@ -64,37 +89,25 @@ export default function RedeemMoneyPage() {
             await reclaimProofRequest.startSession({
                 onSuccess: async (proof) => {
                     if (proof && typeof proof !== 'string') {
-                        const context = JSON.parse(proof?.claimData.context);
-                        const params = context.extractedParameters;
-
                         const isProofVerified = await verifyProof(proof);
 
                         if (isProofVerified) {
-                            const calculatedAmount = 100; // Example amount
-
-                            setVerificationState({
-                                isVerified: true,
-                                username: params.screen_name,
-                                post: params.full_text,
-                                date: params.created_at,
-                                claimableAmount: calculatedAmount
+                            // The verification state will be updated via SSE
+                            await fetch('/api/reclaim/receive-proof', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(proof),
                             });
                         } else {
                             setVerificationState(prev => ({
                                 ...prev,
                                 username: 'Verification Failed'
                             }));
+                            setIsProcessing(false);
                         }
-
-                        await fetch('/api/reclaim/receive-proof', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(proof),
-                        });
                     }
-                    setIsProcessing(false);
                 },
                 onError: (error) => {
                     console.error('Verification failed', error);
@@ -113,22 +126,14 @@ export default function RedeemMoneyPage() {
             return;
         }
         try {
-            // Here you would implement the actual claim logic
             console.log(`Claiming amount: ${verificationState.claimableAmount} for user: ${verificationState.username}`);
-            // Example API call:
-            // await fetch('/api/claim', {
-            //   method: 'POST',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ 
-            //     username: verificationState.username,
-            //     amount: verificationState.claimableAmount 
-            //   })
-            // });
+            // Implement claim logic here
         } catch (error) {
             console.error('Error claiming reward:', error);
         }
     };
 
+    // Rest of the component remains the same...
     return (
         <div>
             <button onClick={() => router.push('/')}>Back to Home</button>
