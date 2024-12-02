@@ -1,5 +1,6 @@
 import { Proof, verifyProof } from '@reclaimprotocol/js-sdk'
-import { sendEventToClients } from '../../callback/route';
+import { sendEventToClients } from '../../../utils/eventUtils';
+
 
 
 import { NextResponse } from 'next/server'
