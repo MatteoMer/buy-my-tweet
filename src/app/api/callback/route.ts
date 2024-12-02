@@ -1,30 +1,36 @@
-import { addClient, removeClient } from '../../utils/eventUtils';
+import { clients } from '../../utils/eventUtils';
+
+export const runtime = 'edge';
 
 export async function GET() {
-    const responseStream = new TransformStream();
-    const writer = responseStream.writable.getWriter();
-    const encoder = new TextEncoder();
+    let controller: ReadableStreamDefaultController;
+    const stream = new ReadableStream({
+        start(ctrl) {
+            controller = ctrl;
+            clients.add(controller);
+        },
+        cancel() {
+            clients.delete(controller);
+        },
+    });
 
-    addClient(writer);
+    // Keep-alive interval
+    const keepAlive = setInterval(() => {
+        try {
+            const encoder = new TextEncoder();
+            controller.enqueue(encoder.encode('data: ping\n\n'));
+        } catch {
+            clearInterval(keepAlive);
+            controller.close();
+            clients.delete(controller);
+        }
+    }, 30000);
 
-    const response = new Response(responseStream.readable, {
+    return new Response(stream, {
         headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
         },
     });
-
-    // Keep connection alive
-    const keepAlive = setInterval(async () => {
-        try {
-            await writer.write(encoder.encode('data: ping\n\n'));
-        } catch {
-            clearInterval(keepAlive);
-            removeClient(writer);
-            writer.close();
-        }
-    }, 30000);
-
-    return response;
 }

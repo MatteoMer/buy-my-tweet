@@ -1,24 +1,14 @@
-const clients = new Set<WritableStreamDefaultWriter<Uint8Array>>();
-
-export function addClient(writer: WritableStreamDefaultWriter<Uint8Array>) {
-    clients.add(writer);
-}
-
-export function removeClient(writer: WritableStreamDefaultWriter<Uint8Array>) {
-    clients.delete(writer);
-}
+export const clients = new Set<ReadableStreamDefaultController>();
 
 export async function sendEventToClients(data: any) {
-    const encoder = new TextEncoder();
-    const encodedData = encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
-
-    for (const writer of clients) {
+    clients.forEach(client => {
         try {
-            await writer.write(encodedData);
+            const encoder = new TextEncoder();
+            client.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         } catch (error) {
             console.error('Error sending to client:', error);
-            clients.delete(writer);
-            writer.close();
+            client.close();
+            clients.delete(client);
         }
-    }
+    });
 }
