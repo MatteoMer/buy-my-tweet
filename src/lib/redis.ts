@@ -15,3 +15,7 @@ export async function storeProof(proofData: any) {
 export async function getLatestProof() {
     return await redis.get('latest_proof');
 }
+
+export async function clearProof() {
+    return await redis.del('latest_proof');
+}

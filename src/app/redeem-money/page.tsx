@@ -1,4 +1,3 @@
-// app/redeem-money/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,61 +23,70 @@ export default function RedeemMoneyPage() {
         date: ''
     });
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isClaimProcessing, setIsClaimProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [claimError, setClaimError] = useState<string | null>(null);
 
-    useEffect(() => {
-        let pollInterval: NodeJS.Timeout;
+    const calculateClaimableAmount = async (proofData: { username: string; post: string; date: string }) => {
+        try {
+            const response = await fetch('/api/calculate-claim', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(proofData)
+            });
 
-        if (isPolling) {
-            pollInterval = setInterval(async () => {
-                try {
-                    const response = await fetch('/api/proof-status');
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch status');
-                    }
+            const data = await response.json();
 
-                    const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to calculate claimable amount');
+            }
 
-                    if (data) {
-                        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+            return data.amount;
+        } catch (error) {
+            console.error('Error calculating claimable amount:', error);
+            throw error;
+        }
+    };
 
-                        if (parsedData.error) {
-                            setError(parsedData.error);
-                            setIsPolling(false);
-                            setIsProcessing(false);
-                            return;
-                        }
-
-                        if (parsedData.proof) {
-                            const context = JSON.parse(parsedData.proof.claimData.context);
-                            const params = context.extractedParameters;
-
-                            setVerificationState({
-                                isVerified: true,
-                                username: params.screen_name,
-                                post: params.full_text,
-                                date: params.created_at,
-                                claimableAmount: 100 // Replace with your calculation
-                            });
-
-                            setIsPolling(false);
-                            setIsProcessing(false);
-                            setRequestUrl('');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Polling error:', error);
-                    // Don't set error state here to avoid hiding the QR code
-                }
-            }, 2000);
+    const handleClaim = async () => {
+        if (!verificationState.isVerified || !verificationState.claimableAmount) {
+            alert('Please complete verification first');
+            return;
         }
 
-        return () => {
-            if (pollInterval) {
-                clearInterval(pollInterval);
+        try {
+            setIsClaimProcessing(true);
+            setClaimError(null);
+
+            const response = await fetch('/api/claim', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: verificationState.username,
+                    amount: verificationState.claimableAmount
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to claim reward');
             }
-        };
-    }, [isPolling]);
+
+            alert('Reward claimed successfully!');
+            router.push('/');
+
+        } catch (error) {
+            console.error('Error claiming reward:', error);
+            setClaimError(error instanceof Error ? error.message : 'Failed to claim reward');
+        } finally {
+            setIsClaimProcessing(false);
+        }
+    };
 
     const startVerification = async () => {
         try {
@@ -136,18 +144,70 @@ export default function RedeemMoneyPage() {
         }
     };
 
-    const handleClaim = async () => {
-        if (!verificationState.isVerified || !verificationState.claimableAmount) {
-            alert('Please complete verification first');
-            return;
+    useEffect(() => {
+        let pollInterval: NodeJS.Timeout;
+
+        if (isPolling) {
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/proof-status');
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch status');
+                    }
+
+                    const data = await response.json();
+
+                    if (data) {
+                        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+
+                        if (parsedData.error) {
+                            setError(parsedData.error);
+                            setIsPolling(false);
+                            setIsProcessing(false);
+                            return;
+                        }
+
+                        if (parsedData.proof) {
+                            const context = JSON.parse(parsedData.proof.claimData.context);
+                            const params = context.extractedParameters;
+
+                            try {
+                                const claimableAmount = await calculateClaimableAmount({
+                                    username: params.screen_name,
+                                    post: params.full_text,
+                                    date: params.created_at
+                                });
+
+                                setVerificationState({
+                                    isVerified: true,
+                                    username: params.screen_name,
+                                    post: params.full_text,
+                                    date: params.created_at,
+                                    claimableAmount
+                                });
+
+                                setIsPolling(false);
+                                setIsProcessing(false);
+                                setRequestUrl('');
+                            } catch (error) {
+                                setError('Failed to calculate claimable amount');
+                                setIsPolling(false);
+                                setIsProcessing(false);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 2000);
         }
-        try {
-            console.log(`Claiming amount: ${verificationState.claimableAmount} for user: ${verificationState.username}`);
-            // Implement claim logic here
-        } catch (error) {
-            console.error('Error claiming reward:', error);
-        }
-    };
+
+        return () => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        };
+    }, [isPolling]);
 
     return (
         <div>
@@ -175,6 +235,7 @@ export default function RedeemMoneyPage() {
                         <div>
                             <h3>Scan QR Code to Verify</h3>
                             <QRCode value={requestUrl} />
+                            <p>Please scan this QR code with your phone to verify your tweet</p>
                         </div>
                     )}
                 </div>
@@ -184,14 +245,27 @@ export default function RedeemMoneyPage() {
                 <div>
                     <h2>Verification Successful!</h2>
                     <div>
-                        <h3>{verificationState.username} posted on {verificationState.date}:</h3>
-                        <p>{verificationState.post}</p>
+                        <h3>Tweet Details:</h3>
+                        <p>Username: {verificationState.username}</p>
+                        <p>Posted on: {verificationState.date}</p>
+                        <p>Tweet content: {verificationState.post}</p>
                     </div>
 
                     <div>
                         <h3>Claimable Amount:</h3>
                         <p>{verificationState.claimableAmount} USDC</p>
-                        <button onClick={handleClaim}>Claim Reward</button>
+                        <button
+                            onClick={handleClaim}
+                            disabled={isClaimProcessing}
+                        >
+                            {isClaimProcessing ? 'Processing...' : 'Claim Reward'}
+                        </button>
+
+                        {claimError && (
+                            <div style={{ color: 'red' }}>
+                                Error: {claimError}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
