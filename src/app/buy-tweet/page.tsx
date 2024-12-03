@@ -1,5 +1,4 @@
 'use client';
-'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -7,6 +6,7 @@ interface User {
     id: number;
     name: string;
     username: string;
+    price: number; // Added price field
 }
 
 export default function BuyTweetPage() {
@@ -42,9 +42,7 @@ export default function BuyTweetPage() {
     };
 
     const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // This is where the buying logic would go
-        console.log(`Buying tweet from ${selectedUser?.username}: ${tweetText}`);
+        alert("[todo] send on hyle and verify balance")
     };
 
     if (loading) {
@@ -60,9 +58,7 @@ export default function BuyTweetPage() {
             <div>
                 <button onClick={() => router.push('/')}>Back to Home</button>
             </div>
-
             <h1>Buy a Tweet</h1>
-
             <div>
                 <h2>Select a User</h2>
                 <ul>
@@ -72,15 +68,14 @@ export default function BuyTweetPage() {
                             onClick={() => handleUserClick(user)}
                             style={{ cursor: 'pointer' }}
                         >
-                            {user.name} ({user.username})
+                            {user.name} ({user.username}) - ${user.price.toFixed(2)}
                         </li>
                     ))}
                 </ul>
             </div>
-
             {selectedUser && (
                 <div>
-                    <h2>Buy Tweet from {selectedUser.name}</h2>
+                    <h2>Buy Tweet from {selectedUser.name} - ${selectedUser.price.toFixed(2)}</h2>
                     <form onSubmit={handleSubmit}>
                         <div>
                             <textarea
@@ -90,7 +85,7 @@ export default function BuyTweetPage() {
                                 rows={3}
                             />
                         </div>
-                        <button type="submit">Buy Tweet</button>
+                        <button type="submit">Buy Tweet (${selectedUser.price.toFixed(2)})</button>
                     </form>
                 </div>
             )}
