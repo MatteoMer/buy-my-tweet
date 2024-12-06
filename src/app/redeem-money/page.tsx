@@ -12,6 +12,10 @@ interface VerificationState {
     claimableAmount?: number;
 }
 
+interface UserDetails {
+    username: string;
+}
+
 export default function RedeemMoneyPage() {
     const router = useRouter();
     const [requestUrl, setRequestUrl] = useState('');
@@ -22,10 +26,26 @@ export default function RedeemMoneyPage() {
         post: '',
         date: ''
     });
+    const [userDetails, setUserDetails] = useState<UserDetails>({
+        username: '',
+    });
     const [isProcessing, setIsProcessing] = useState(false);
     const [isClaimProcessing, setIsClaimProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [claimError, setClaimError] = useState<string | null>(null);
+    const [userDetailsError, setUserDetailsError] = useState<string | null>(null);
+
+
+    const handleUserDetailsSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setUserDetailsError(null);
+
+        if (!userDetails.username) {
+            setUserDetailsError('Please fill in all fields');
+            return;
+        }
+
+    };
 
     const calculateClaimableAmount = async (proofData: { username: string; post: string; date: string }) => {
         try {
@@ -53,6 +73,11 @@ export default function RedeemMoneyPage() {
     const handleClaim = async () => {
         if (!verificationState.isVerified || !verificationState.claimableAmount) {
             alert('Please complete verification first');
+            return;
+        }
+
+        if (userDetails.username.toLowerCase() !== verificationState.username.toLowerCase()) {
+            setClaimError('Username does not match the verified tweet username');
             return;
         }
 
@@ -221,12 +246,30 @@ export default function RedeemMoneyPage() {
                 </div>
             )}
 
+            <form onSubmit={handleUserDetailsSubmit}>
+                <div>
+                    <label htmlFor="username">Username:</label>
+                    <input
+                        type="text"
+                        id="username"
+                        value={userDetails.username}
+                        onChange={(e) => setUserDetails(prev => ({ ...prev, username: e.target.value }))}
+                        required
+                    />
+                </div>
+                {userDetailsError && (
+                    <div style={{ color: 'red' }}>
+                        {userDetailsError}
+                    </div>
+                )}
+            </form>
+
             {!verificationState.isVerified && (
                 <div>
                     <h2>Verify Your Tweet</h2>
                     <button
                         onClick={startVerification}
-                        disabled={isProcessing}
+                        disabled={isProcessing || !userDetails.username}
                     >
                         {isProcessing ? 'Processing...' : 'Start Verification'}
                     </button>
@@ -251,22 +294,28 @@ export default function RedeemMoneyPage() {
                         <p>Tweet content: {verificationState.post}</p>
                     </div>
 
-                    <div>
-                        <h3>Claimable Amount:</h3>
-                        <p>{verificationState.claimableAmount} USDC</p>
-                        <button
-                            onClick={handleClaim}
-                            disabled={isClaimProcessing}
-                        >
-                            {isClaimProcessing ? 'Processing...' : 'Claim Reward'}
-                        </button>
+                    {userDetails.username.toLowerCase() === verificationState.username.toLowerCase() ? (
+                        <div>
+                            <h3>Claimable Amount:</h3>
+                            <p>{verificationState.claimableAmount} USDC</p>
+                            <button
+                                onClick={handleClaim}
+                                disabled={isClaimProcessing}
+                            >
+                                {isClaimProcessing ? 'Processing...' : 'Claim Reward'}
+                            </button>
 
-                        {claimError && (
-                            <div style={{ color: 'red' }}>
-                                Error: {claimError}
-                            </div>
-                        )}
-                    </div>
+                            {claimError && (
+                                <div style={{ color: 'red' }}>
+                                    Error: {claimError}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ color: 'red' }}>
+                            <p>The username you entered does not match the verified tweet username. Please update your username to claim the reward.</p>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

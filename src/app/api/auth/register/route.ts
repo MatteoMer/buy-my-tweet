@@ -1,25 +1,20 @@
 import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { v4 as uuidv4 } from 'uuid';
-import { getUserIdFromEmail, storeCurrentChallenge } from '@/lib/redis';
+import { getUserIdFromUsername, storeCurrentChallenge } from '@/lib/redis';
 
 const rpName = 'Buy X post';
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
 
 export async function POST(req: Request) {
     try {
-        const { email } = await req.json();
+        const { username } = await req.json();
 
-        // Validate email
-        if (!email || !email.includes('@')) {
-            return new Response(JSON.stringify({ error: 'Valid email is required' }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-        const existingUserId = await getUserIdFromEmail(email);
+        // TODO: verify reclaim proof
+
+        const existingUserId = await getUserIdFromUsername(username);
         if (existingUserId) {
             return new Response(JSON.stringify({
-                error: 'Email already registered'
+                error: 'username already registered'
             }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
@@ -35,7 +30,7 @@ export async function POST(req: Request) {
             rpName,
             rpID,
             userID: userIdBytes,
-            userName: email,
+            userName: username,
             attestationType: 'direct',
             authenticatorSelection: {
                 authenticatorAttachment: 'platform',
@@ -48,13 +43,13 @@ export async function POST(req: Request) {
             challenge: crypto.getRandomValues(new Uint8Array(32))
         });
 
-        console.log(`userId: ${userId}, email: ${email}`);
+        console.log(`userId: ${userId}, username: ${username}`);
         await storeCurrentChallenge(userId, options.challenge);
 
         return new Response(JSON.stringify({
             options,
             userId,
-            email,
+            username,
         }), {
             headers: { 'Content-Type': 'application/json' },
         });

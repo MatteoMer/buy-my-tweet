@@ -4,7 +4,7 @@ interface StoredCredential {
     credentialID: string;
     publicKey: string;
     counter: number;
-    email: string;
+    username: string;
 }
 
 export const redis = new Redis({
@@ -34,7 +34,7 @@ export async function storeUserCredential(userId: string, credential: StoredCred
     // Add new credential to existing ones
     existingCredentials.push(credential);
 
-    await storeEmailMapping(credential.email, userId);
+    await storeUsernameMapping(credential.username, userId);
 
     return await redis.set(key, JSON.stringify(existingCredentials));
 }
@@ -64,9 +64,9 @@ export async function removeUserCredential(userId: string, credentialId: string)
     const credentialToRemove = credentials.find(cred => cred.credentialID === credentialId);
     const updatedCredentials = credentials.filter(cred => cred.credentialID !== credentialId);
 
-    // If this was the last credential for this email, remove the email mapping
+    // If this was the last credential for this username, remove the username mapping
     if (credentialToRemove && updatedCredentials.length === 0) {
-        await removeEmailMapping(credentialToRemove.email);
+        await removeUsernameMapping(credentialToRemove.username);
     }
     return await redis.set(key, JSON.stringify(updatedCredentials));
 }
@@ -83,27 +83,27 @@ export async function updateCredentialCounter(userId: string, credentialId: stri
 }
 
 
-export async function storeEmailMapping(email: string, userId: string) {
-    const key = `webauthn:email:${email}`;
+export async function storeUsernameMapping(username: string, userId: string) {
+    const key = `webauthn:username:${username}`;
     return await redis.set(key, userId);
 }
 
-export async function removeEmailMapping(email: string) {
-    const key = `webauthn:email:${email}`;
+export async function removeUsernameMapping(username: string) {
+    const key = `webauthn:username:${username}`;
     return await redis.del(key);
 }
 
-export async function getUserIdFromEmail(email: string): Promise<string | null> {
-    const key = `webauthn:email:${email}`;
+export async function getUserIdFromUsername(username: string): Promise<string | null> {
+    const key = `webauthn:username:${username}`;
     return await redis.get(key);
 }
 
-export async function isEmailRegistered(email: string): Promise<boolean> {
-    const userId = await getUserIdFromEmail(email);
+export async function isUsernameRegistered(username: string): Promise<boolean> {
+    const userId = await getUserIdFromUsername(username);
     return userId !== null;
 }
 
-export async function getAllUserEmails(userId: string): Promise<string[]> {
+export async function getAllUsernames(userId: string): Promise<string[]> {
     const credentials = await getUserCredentials(userId);
-    return [...new Set(credentials.map(cred => cred.email))];
+    return [...new Set(credentials.map(cred => cred.username))];
 }

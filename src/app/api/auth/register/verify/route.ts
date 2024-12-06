@@ -13,17 +13,7 @@ export async function POST(req: Request) {
         const body = await req.json();
         const response = body.verification
         const userId = body.userId
-        const email = body.email
-
-        // Validate email
-        if (!email || !email.includes('@')) {
-            return new Response(JSON.stringify({
-                error: 'Valid email is required'
-            }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
+        const username = body.username
 
         // Get challenge from Redis
         const expectedChallenge = await getCurrentChallenge(userId);
@@ -50,13 +40,13 @@ export async function POST(req: Request) {
                 credentialID: credential.id,
                 publicKey: isoBase64URL.fromBuffer(credential.publicKey),
                 counter: 0,
-                email, // Store email with the credential
+                username, // Store username with the credential
             });
 
             return new Response(JSON.stringify({
                 verified: true,
                 registrationInfo: verification.registrationInfo,
-                email, // Include email in response
+                username, // Include username in response
             }), {
                 headers: { 'Content-Type': 'application/json' },
             });

@@ -7,9 +7,9 @@ const RegisterPage = () => {
     const router = useRouter();
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [email, setEmail] = useState('');
-    const [loginEmail, setLoginEmail] = useState('');
-    const [price, setPrice] = useState(''); // Changed to string to match input value type
+    const [username, setUsername] = useState('');
+    const [loginUsername, setLoginUsername] = useState('');
+    const [price, setPrice] = useState('');
 
     useEffect(() => {
         setError('On this page you can register to get listed on the app')
@@ -17,8 +17,8 @@ const RegisterPage = () => {
 
     const handleRegister = async () => {
         try {
-            if (!email || !email.includes('@')) {
-                setError('Please enter a valid email address');
+            if (!username || username.length < 3) {
+                setError('Please enter a valid username (at least 3 characters)');
                 return;
             }
 
@@ -36,7 +36,7 @@ const RegisterPage = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, price: priceNumber }),
+                body: JSON.stringify({ username, price: priceNumber }),
             });
 
             if (!optionsRes.ok) {
@@ -53,7 +53,7 @@ const RegisterPage = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ verification, userId, email, price: priceNumber }),
+                body: JSON.stringify({ verification, userId, username, price: priceNumber }),
             });
 
             if (!verificationRes.ok) {
@@ -65,8 +65,8 @@ const RegisterPage = () => {
 
             if (result.verified) {
                 alert('Successfully registered user!');
-                setEmail('');
-                setPrice(''); // Reset to default
+                setUsername('');
+                setPrice('');
             }
             router.push('/')
         } catch (err) {
@@ -78,8 +78,8 @@ const RegisterPage = () => {
 
     const handleWebAuthnLogin = async () => {
         try {
-            if (!loginEmail || !loginEmail.includes('@')) {
-                setError('Please enter a valid email address to login');
+            if (!loginUsername || loginUsername.length < 3) {
+                setError('Please enter a valid username to login');
                 return;
             }
 
@@ -91,7 +91,7 @@ const RegisterPage = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email: loginEmail })
+                body: JSON.stringify({ username: loginUsername })
             });
 
             if (!optionsRes.ok) {
@@ -106,7 +106,7 @@ const RegisterPage = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ credential, email: loginEmail }),
+                body: JSON.stringify({ credential, username: loginUsername }),
             });
 
             if (!verificationRes.ok) {
@@ -116,7 +116,7 @@ const RegisterPage = () => {
             const verification = await verificationRes.json();
 
             if (verification.verified) {
-                setLoginEmail('');
+                setLoginUsername('');
                 router.push('/buy-tweet');
             }
         } catch (err) {
@@ -147,12 +147,12 @@ const RegisterPage = () => {
             <div>
                 <h2>Register new user</h2>
                 <div>
-                    Your email:
+                    Your username:
                     <input
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        type="text"
+                        placeholder="Enter your username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                     />
                 </div>
                 <div>

@@ -4,7 +4,7 @@ import {
     getUserCredentials,
     getCurrentChallenge,
     updateCredentialCounter,
-    getUserIdFromEmail
+    getUserIdFromUsername
 } from '@/lib/redis';
 
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
             });
         }
 
-        const userId = await getUserIdFromEmail(email);
+        const userId = await getUserIdFromUsername(email);
         if (!userId) {
             return new Response(JSON.stringify({
                 error: 'Email not registered'
