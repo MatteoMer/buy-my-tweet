@@ -6,12 +6,7 @@ import {
 import { isoBase64URL } from '@simplewebauthn/server/helpers';
 
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
-let origin = process.env.NEXT_PUBLIC_API_URL || "";
-
-if (!origin.endsWith('/')) {
-    origin += '/'
-}
-
+const origin = process.env.NEXT_PUBLIC_API_URL || "";
 
 export async function POST(req: Request) {
     try {
