@@ -8,7 +8,11 @@ import {
 } from '@/lib/redis';
 
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
-const origin = process.env.NEXT_PUBLIC_API_URL || "";
+let origin = process.env.NEXT_PUBLIC_API_URL || "";
+
+if (!origin.endsWith('/')) {
+    origin += '/'
+}
 
 export async function POST(req: Request) {
     try {
