@@ -1,28 +1,44 @@
-import { generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server';
+import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { v4 as uuidv4 } from 'uuid';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth"; // You'll need to create this
-import { storeCurrentChallenge } from '@/lib/redis';
+import { getUserIdFromEmail, storeCurrentChallenge } from '@/lib/redis';
 
 const rpName = 'Buy X post';
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
 
 export async function POST(req: Request) {
     try {
+        const { email } = await req.json();
+
+        // Validate email
+        if (!email || !email.includes('@')) {
+            return new Response(JSON.stringify({ error: 'Valid email is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+        const existingUserId = await getUserIdFromEmail(email);
+        if (existingUserId) {
+            return new Response(JSON.stringify({
+                error: 'Email already registered'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+
         const userId = uuidv4();
-
         const encoder = new TextEncoder();
-
         const userIdBytes = encoder.encode(userId);
 
         const options = await generateRegistrationOptions({
             rpName,
             rpID,
             userID: userIdBytes,
-            userName: userId,
+            userName: email,
             attestationType: 'direct',
             authenticatorSelection: {
-                authenticatorAttachment: 'platform', // This specifies TouchID/FaceID
+                authenticatorAttachment: 'platform',
                 requireResidentKey: true,
                 residentKey: 'required',
                 userVerification: 'required'
@@ -32,16 +48,16 @@ export async function POST(req: Request) {
             challenge: crypto.getRandomValues(new Uint8Array(32))
         });
 
-        console.log(`userId: ${userId}`)
+        console.log(`userId: ${userId}, email: ${email}`);
         await storeCurrentChallenge(userId, options.challenge);
 
         return new Response(JSON.stringify({
             options,
-            userId, // Include userId at the same level
+            userId,
+            email,
         }), {
             headers: { 'Content-Type': 'application/json' },
         });
-
     } catch (error) {
         return new Response(JSON.stringify({ error: 'Failed to generate registration options' }), {
             status: 500,

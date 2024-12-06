@@ -1,9 +1,10 @@
 import { Redis } from '@upstash/redis'
 
 interface StoredCredential {
-    credentialID: string;  // Base64 encoded
-    publicKey: string;     // Base64 encoded
+    credentialID: string;
+    publicKey: string;
     counter: number;
+    email: string;
 }
 
 export const redis = new Redis({
@@ -33,13 +34,16 @@ export async function storeUserCredential(userId: string, credential: StoredCred
     // Add new credential to existing ones
     existingCredentials.push(credential);
 
+    await storeEmailMapping(credential.email, userId);
+
     return await redis.set(key, JSON.stringify(existingCredentials));
 }
 
 export async function getUserCredentials(userId: string): Promise<StoredCredential[]> {
     const key = `webauthn:user:${userId}:credentials`;
-    const stored = await redis.get<string>(key);
-    return stored ? JSON.parse(stored) : [];
+    const stored = await redis.get<StoredCredential[]>(key);
+    console.log(typeof stored)
+    return stored || [];
 }
 
 export async function storeCurrentChallenge(userId: string, challenge: string) {
@@ -56,7 +60,14 @@ export async function getCurrentChallenge(userId: string): Promise<string | null
 export async function removeUserCredential(userId: string, credentialId: string) {
     const key = `webauthn:user:${userId}:credentials`;
     const credentials = await getUserCredentials(userId);
+
+    const credentialToRemove = credentials.find(cred => cred.credentialID === credentialId);
     const updatedCredentials = credentials.filter(cred => cred.credentialID !== credentialId);
+
+    // If this was the last credential for this email, remove the email mapping
+    if (credentialToRemove && updatedCredentials.length === 0) {
+        await removeEmailMapping(credentialToRemove.email);
+    }
     return await redis.set(key, JSON.stringify(updatedCredentials));
 }
 
@@ -69,4 +80,30 @@ export async function updateCredentialCounter(userId: string, credentialId: stri
             : cred
     );
     return await redis.set(key, JSON.stringify(updatedCredentials));
+}
+
+
+export async function storeEmailMapping(email: string, userId: string) {
+    const key = `webauthn:email:${email}`;
+    return await redis.set(key, userId);
+}
+
+export async function removeEmailMapping(email: string) {
+    const key = `webauthn:email:${email}`;
+    return await redis.del(key);
+}
+
+export async function getUserIdFromEmail(email: string): Promise<string | null> {
+    const key = `webauthn:email:${email}`;
+    return await redis.get(key);
+}
+
+export async function isEmailRegistered(email: string): Promise<boolean> {
+    const userId = await getUserIdFromEmail(email);
+    return userId !== null;
+}
+
+export async function getAllUserEmails(userId: string): Promise<string[]> {
+    const credentials = await getUserCredentials(userId);
+    return [...new Set(credentials.map(cred => cred.email))];
 }

@@ -1,25 +1,30 @@
 'use client'
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
-import { useState } from 'react';
 
-
-const Home = () => {
+const RegisterPage = () => {
+    const router = useRouter();
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState('');
     const [loginEmail, setLoginEmail] = useState('');
+    const [price, setPrice] = useState(''); // Changed to string to match input value type
 
-    const router = useRouter();
-
-    const handleNavigation = (path: string) => {
-        router.push(path);
-    };
+    useEffect(() => {
+        setError('On this page you can register to get listed on the app')
+    }, [])
 
     const handleRegister = async () => {
         try {
             if (!email || !email.includes('@')) {
                 setError('Please enter a valid email address');
+                return;
+            }
+
+            const priceNumber = Number(price);
+            if (!price || isNaN(priceNumber) || priceNumber <= 0) {
+                setError('Please enter a valid price (greater than 0)');
                 return;
             }
 
@@ -31,7 +36,7 @@ const Home = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email, price: priceNumber }),
             });
 
             if (!optionsRes.ok) {
@@ -40,7 +45,6 @@ const Home = () => {
             }
 
             const { options, userId } = await optionsRes.json();
-            localStorage.setItem('webauthn_user_id', userId);
 
             const verification = await startRegistration({ optionsJSON: options });
 
@@ -49,7 +53,7 @@ const Home = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ verification, userId, email }),
+                body: JSON.stringify({ verification, userId, email, price: priceNumber }),
             });
 
             if (!verificationRes.ok) {
@@ -60,9 +64,11 @@ const Home = () => {
             const result = await verificationRes.json();
 
             if (result.verified) {
-                alert('Successfully registered biometric authentication!');
+                alert('Successfully registered user!');
                 setEmail('');
+                setPrice(''); // Reset to default
             }
+            router.push('/')
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registration failed');
         } finally {
@@ -121,26 +127,54 @@ const Home = () => {
         }
     };
 
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setPrice(value);
+    };
+
     return (
-        <div >
-            <h1>Buy a X post</h1>
+        <div>
+            <div>
+                <button onClick={() => router.push('/')}>Back to Home</button>
+            </div>
+
+            <h1>Buy my X post</h1>
+
+            {error && (
+                <div>{error}</div>
+            )}
 
             <div>
-                <div >
-                    <button style={{ marginRight: "4px" }} onClick={() => handleNavigation('/register')}>
-                        Register
-                    </button>
-                    <button style={{ marginRight: "4px" }} onClick={() => handleNavigation('/buy-tweet')}>
-                        Buy Tweet
-                    </button>
-                    <button onClick={() => handleNavigation('/redeem-money')}>
-                        Redeem Money
+                <h2>Register new user</h2>
+                <div>
+                    Your email:
+                    <input
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </div>
+                <div>
+                    Price of a tweet:
+                    <input
+                        type="text"
+                        placeholder="Enter a price"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <button
+                        disabled={isAuthenticating}
+                        onClick={handleRegister}
+                    >
+                        {isAuthenticating ? 'Registering...' : 'Register user'}
                     </button>
                 </div>
             </div>
-
-        </div >
+        </div>
     );
 };
 
-export default Home;
+export default RegisterPage;

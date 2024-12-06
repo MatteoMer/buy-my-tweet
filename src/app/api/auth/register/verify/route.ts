@@ -3,6 +3,7 @@ import {
     getCurrentChallenge,
     storeUserCredential
 } from '@/lib/redis';
+import { isoBase64URL } from '@simplewebauthn/server/helpers';
 
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
 const origin = process.env.NEXT_PUBLIC_API_URL || "";
@@ -12,10 +13,20 @@ export async function POST(req: Request) {
         const body = await req.json();
         const response = body.verification
         const userId = body.userId
+        const email = body.email
+
+        // Validate email
+        if (!email || !email.includes('@')) {
+            return new Response(JSON.stringify({
+                error: 'Valid email is required'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
         // Get challenge from Redis
         const expectedChallenge = await getCurrentChallenge(userId);
-
         if (!expectedChallenge) {
             return new Response(JSON.stringify({
                 error: 'Challenge not found or expired'
@@ -25,7 +36,7 @@ export async function POST(req: Request) {
             });
         }
 
-        console.log(response)
+        console.log(response);
         const verification = await verifyRegistrationResponse({
             response,
             expectedChallenge,
@@ -35,16 +46,17 @@ export async function POST(req: Request) {
 
         if (verification.verified && verification.registrationInfo) {
             const { credential } = verification.registrationInfo;
-
             await storeUserCredential(userId, {
                 credentialID: credential.id,
-                publicKey: new TextDecoder().decode(credential.publicKey),
-                counter: 0
+                publicKey: isoBase64URL.fromBuffer(credential.publicKey),
+                counter: 0,
+                email, // Store email with the credential
             });
 
             return new Response(JSON.stringify({
                 verified: true,
-                registrationInfo: verification.registrationInfo
+                registrationInfo: verification.registrationInfo,
+                email, // Include email in response
             }), {
                 headers: { 'Content-Type': 'application/json' },
             });

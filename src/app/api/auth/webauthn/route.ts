@@ -1,17 +1,48 @@
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
 import type { GenerateAuthenticationOptionsOpts } from '@simplewebauthn/server';
-import { getUserCredentials, storeCurrentChallenge } from '@/lib/redis';
+import {
+    getUserCredentials,
+    storeCurrentChallenge,
+    getUserIdFromEmail
+} from '@/lib/redis';
 
-const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname; // This will get 'localhost'
+const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
 
 export async function POST(req: Request) {
     try {
+        const { email } = await req.json();
 
-        const res = await req.json()
-        const userId = res["userId"]
+        if (!email || !email.includes('@')) {
+            return new Response(JSON.stringify({
+                error: 'Valid email is required'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
-        console.log(`userId webauthn route: ${userId}`)
+        // Get userId from email
+        const userId = await getUserIdFromEmail(email);
+        if (!userId) {
+            return new Response(JSON.stringify({
+                error: 'Email not registered'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        console.log(`Email: ${email}, found userId: ${userId}`);
         const userCredentials = await getUserCredentials(userId);
+
+        if (userCredentials.length === 0) {
+            return new Response(JSON.stringify({
+                error: 'No registered credentials found for this user'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
         const opts: GenerateAuthenticationOptionsOpts = {
             timeout: 60000,
@@ -27,7 +58,10 @@ export async function POST(req: Request) {
         const options = await generateAuthenticationOptions(opts);
         await storeCurrentChallenge(userId, options.challenge);
 
-        return new Response(JSON.stringify(options), {
+        return new Response(JSON.stringify({
+            options,
+            userId // Return userId for use in verification
+        }), {
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
@@ -40,4 +74,3 @@ export async function POST(req: Request) {
         });
     }
 }
-

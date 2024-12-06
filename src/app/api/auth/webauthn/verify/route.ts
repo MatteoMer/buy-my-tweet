@@ -1,11 +1,10 @@
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { isoBase64URL } from '@simplewebauthn/server/helpers';
 import {
     getUserCredentials,
     getCurrentChallenge,
-    updateCredentialCounter
+    updateCredentialCounter,
+    getUserIdFromEmail
 } from '@/lib/redis';
 
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
@@ -13,21 +12,29 @@ const origin = process.env.NEXT_PUBLIC_API_URL || "";
 
 export async function POST(req: Request) {
     try {
-        const session = await getServerSession(authOptions);
+        const { credential, email } = await req.json();
 
-        if (!session?.user?.id) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-                status: 401,
+        if (!email || !email.includes('@')) {
+            return new Response(JSON.stringify({
+                error: 'Valid email is required'
+            }), {
+                status: 400,
                 headers: { 'Content-Type': 'application/json' },
             });
         }
 
-        const userId = session.user.id;
-        const body = await req.json();
+        const userId = await getUserIdFromEmail(email);
+        if (!userId) {
+            return new Response(JSON.stringify({
+                error: 'Email not registered'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
         const userCredentials = await getUserCredentials(userId);
-        const storedCredential = userCredentials.find(cred => cred.credentialID === body.id);
-
+        const storedCredential = userCredentials.find(cred => cred.credentialID === credential.id);
 
         if (!storedCredential) {
             throw new Error('Credential not found');
@@ -38,9 +45,8 @@ export async function POST(req: Request) {
             throw new Error('Challenge not found');
         }
 
-
         const verification = await verifyAuthenticationResponse({
-            response: body,
+            response: credential,
             expectedChallenge,
             expectedOrigin: origin,
             expectedRPID: rpID,
@@ -59,7 +65,6 @@ export async function POST(req: Request) {
                 storedCredential.credentialID,
                 verification.authenticationInfo.newCounter
             );
-
         }
 
         return new Response(JSON.stringify({
@@ -67,7 +72,6 @@ export async function POST(req: Request) {
         }), {
             headers: { 'Content-Type': 'application/json' },
         });
-
     } catch (error) {
         console.error('WebAuthn verification error:', error);
         return new Response(JSON.stringify({

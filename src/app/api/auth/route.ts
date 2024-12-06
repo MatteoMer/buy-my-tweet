@@ -10,7 +10,8 @@ export async function POST(req: Request) {
     try {
         const opts: GenerateAuthenticationOptionsOpts = {
             timeout: 60000,
-            allowCredentials: [], // You'll need to populate this with stored credentials
+            allowCredentials: [],
+            // You'll need to populate this with stored credentials
             userVerification: 'preferred',
             rpID,
         };
