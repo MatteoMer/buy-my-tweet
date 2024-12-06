@@ -3,36 +3,27 @@ import type { GenerateAuthenticationOptionsOpts } from '@simplewebauthn/server';
 import {
     getUserCredentials,
     storeCurrentChallenge,
-    getUserIdFromEmail
+    getUserIdFromUsername
 } from '@/lib/redis';
 
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
 
 export async function POST(req: Request) {
     try {
-        const { email } = await req.json();
+        const { username } = await req.json();
 
-        if (!email || !email.includes('@')) {
-            return new Response(JSON.stringify({
-                error: 'Valid email is required'
-            }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        // Get userId from email
-        const userId = await getUserIdFromEmail(email);
+        // Get userId from username
+        const userId = await getUserIdFromUsername(username);
         if (!userId) {
             return new Response(JSON.stringify({
-                error: 'Email not registered'
+                error: 'username not registered'
             }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
             });
         }
 
-        console.log(`Email: ${email}, found userId: ${userId}`);
+        console.log(`username: ${username}, found userId: ${userId}`);
         const userCredentials = await getUserCredentials(userId);
 
         if (userCredentials.length === 0) {
