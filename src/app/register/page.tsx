@@ -2,9 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
-import QRCode from 'react-qr-code';
 import { ReclaimProofRequest, verifyProof } from '@reclaimprotocol/js-sdk';
-import { clearProof } from '@/lib/redis';
 
 const RegisterPage = () => {
     const router = useRouter();
@@ -41,58 +39,6 @@ const RegisterPage = () => {
     }
 
 
-    useEffect(() => {
-        let pollInterval: NodeJS.Timeout;
-
-        if (isPolling) {
-            pollInterval = setInterval(async () => {
-                try {
-                    const response = await fetch('/api/proof-status?app=post');
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch status');
-                    }
-
-                    const data = await response.json();
-
-                    if (data) {
-                        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-
-                        if (parsedData.error) {
-                            setError(parsedData.error);
-                            setIsPolling(false);
-                            return;
-                        }
-
-                        if (parsedData.proof) {
-                            const context = JSON.parse(parsedData.proof.claimData.context);
-                            const params = context.extractedParameters;
-
-                            try {
-
-                                setUsername(params.screen_name);
-                                setIsPolling(false);
-                                setRequestUrl('');
-                            } catch (error) {
-                                setError('Failed to calculate claimable amount');
-                                setIsPolling(false);
-                            }
-
-                            clearProof()
-                        }
-                    }
-                } catch (error) {
-                    console.error('Polling error:', error);
-                }
-            }, 2000);
-        }
-        return () => {
-            if (pollInterval) {
-                clearInterval(pollInterval);
-            }
-        };
-    }, [isPolling]);
-
-
     const handleRegister = async () => {
         try {
             if (!username || username.length < 3) {
@@ -108,7 +54,6 @@ const RegisterPage = () => {
 
             setIsAuthenticating(true);
             setError(null);
-            getLoginRequestUrl();
 
             const optionsRes = await fetch('/api/auth/register', {
                 method: 'POST',
@@ -247,19 +192,11 @@ const RegisterPage = () => {
                     <div>
                         <button
                             disabled={isAuthenticating}
-                            onClick={getLoginRequestUrl}
+                            onClick={handleRegister}
                         >
-                            {isAuthenticating ? 'Logging in...' : 'Login via Reclaim'}
+                            {isAuthenticating ? 'Registering...' : 'Register'}
                         </button>
                     </div>
-                </div>
-            )}
-            {requestUrl && (
-
-                <div>
-                    <h3>Scan QR Code to Verify</h3>
-                    <QRCode value={requestUrl} />
-                    <p>Please scan this QR code with your phone to verify that this account belongs to you</p>
                 </div>
             )}
         </div>

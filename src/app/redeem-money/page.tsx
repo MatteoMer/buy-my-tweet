@@ -5,12 +5,12 @@ import QRCode from 'react-qr-code';
 import { ReclaimProofRequest, verifyProof } from '@reclaimprotocol/js-sdk';
 import { startAuthentication } from '@simplewebauthn/browser';
 
-interface VerificationState {
-    isVerified: boolean;
+interface Tweet {
+    id: string;
+    content: string;
     username: string;
-    post: string;
-    date: string;
-    claimableAmount?: number;
+    claimableAmount: number;
+    isVerified: boolean;
 }
 
 interface UserDetails {
@@ -19,14 +19,9 @@ interface UserDetails {
 
 export default function RedeemMoneyPage() {
     const router = useRouter();
+    const [tweets, setTweets] = useState<Tweet[]>([]);
+    const [selectedTweet, setSelectedTweet] = useState<Tweet | null>(null);
     const [requestUrl, setRequestUrl] = useState('');
-    const [isPolling, setIsPolling] = useState(false);
-    const [verificationState, setVerificationState] = useState<VerificationState>({
-        isVerified: false,
-        username: '',
-        post: '',
-        date: ''
-    });
     const [userDetails, setUserDetails] = useState<UserDetails>({
         username: '',
     });
@@ -37,6 +32,28 @@ export default function RedeemMoneyPage() {
     const [userDetailsError, setUserDetailsError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        const fetchTweets = async () => {
+            if (!userDetails.username) return;
+
+            try {
+                const response = await fetch(`/api/tweets-to-verify?username=${encodeURIComponent(userDetails.username)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch tweets');
+                }
+                const data = await response.json();
+                setTweets(data);
+            } catch (error) {
+                console.error('Error fetching tweets:', error);
+                setError('Failed to load tweets');
+            }
+        };
+
+        if (isAuthenticated) {
+            fetchTweets();
+        }
+    }, [isAuthenticated, userDetails.username]);
 
     const handleWebAuthnLogin = async () => {
         try {
@@ -73,7 +90,7 @@ export default function RedeemMoneyPage() {
                 setIsAuthenticated(true);
             }
         } catch (err) {
-            console.log(err);
+            console.error(err);
             setError(err instanceof Error ? err.message : 'Authentication failed');
         } finally {
             setIsAuthenticating(false);
@@ -91,77 +108,13 @@ export default function RedeemMoneyPage() {
         handleWebAuthnLogin();
     };
 
-    const calculateClaimableAmount = async (proofData: { username: string; post: string; date: string }) => {
-        try {
-            const response = await fetch('/api/calculate-claim', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(proofData)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to calculate claimable amount');
-            }
-
-            return data.amount;
-        } catch (error) {
-            console.error('Error calculating claimable amount:', error);
-            throw error;
-        }
-    };
-
-    const handleClaim = async () => {
-        if (!verificationState.isVerified || !verificationState.claimableAmount) {
-            alert('Please complete verification first');
-            return;
-        }
-
-        if (userDetails.username.toLowerCase() !== verificationState.username.toLowerCase()) {
-            setClaimError('Username does not match the verified tweet username');
-            return;
-        }
-
-        try {
-            setIsClaimProcessing(true);
-            setClaimError(null);
-
-            const response = await fetch('/api/claim', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: verificationState.username,
-                    amount: verificationState.claimableAmount
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to claim reward');
-            }
-
-            alert('Reward claimed successfully!');
-            router.push('/');
-
-        } catch (error) {
-            console.error('Error claiming reward:', error);
-            setClaimError(error instanceof Error ? error.message : 'Failed to claim reward');
-        } finally {
-            setIsClaimProcessing(false);
-        }
-    };
-
-    const startVerification = async () => {
+    const startVerification = async (tweet: Tweet) => {
         if (!isAuthenticated) {
             setError('Please authenticate first');
             return;
         }
+
+        setSelectedTweet(tweet);
 
         try {
             setError(null);
@@ -181,7 +134,6 @@ export default function RedeemMoneyPage() {
 
             const url = await reclaimProofRequest.getRequestUrl();
             setRequestUrl(url);
-            setIsPolling(true);
 
             await reclaimProofRequest.startSession({
                 onSuccess: async (proof) => {
@@ -194,106 +146,81 @@ export default function RedeemMoneyPage() {
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify(proof),
+                                body: JSON.stringify({ proof, tweetId: tweet.id }),
                             });
-                        } else {
-                            setError('Verification failed');
-                            setIsProcessing(false);
-                            setIsPolling(false);
+
+                            setTweets(prevTweets =>
+                                prevTweets.map(t =>
+                                    t.id === tweet.id ? { ...t, isVerified: true } : t
+                                )
+                            );
                         }
                     }
+                    setIsProcessing(false);
+                    setSelectedTweet(null);
+                    handleClaim(tweet)
                 },
                 onError: (error) => {
                     console.error('Verification failed', error);
                     setError('Verification failed');
                     setIsProcessing(false);
-                    setIsPolling(false);
+                    setSelectedTweet(null);
                 },
             });
         } catch (error) {
             console.error('Error during verification request:', error);
             setError('Failed to start verification');
             setIsProcessing(false);
-            setIsPolling(false);
+            setSelectedTweet(null);
         }
     };
 
-    useEffect(() => {
-        let pollInterval: NodeJS.Timeout;
-
-        if (isPolling) {
-            pollInterval = setInterval(async () => {
-                try {
-                    const response = await fetch('/api/proof-status?app=post');
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch status');
-                    }
-
-                    const data = await response.json();
-
-                    if (data) {
-                        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-
-                        if (parsedData.error) {
-                            setError(parsedData.error);
-                            setIsPolling(false);
-                            setIsProcessing(false);
-                            return;
-                        }
-
-                        if (parsedData.proof) {
-                            const context = JSON.parse(parsedData.proof.claimData.context);
-                            const params = context.extractedParameters;
-
-                            try {
-                                const claimableAmount = await calculateClaimableAmount({
-                                    username: params.screen_name,
-                                    post: params.full_text,
-                                    date: params.created_at
-                                });
-
-                                setVerificationState({
-                                    isVerified: true,
-                                    username: params.screen_name,
-                                    post: params.full_text,
-                                    date: params.created_at,
-                                    claimableAmount
-                                });
-
-                                setIsPolling(false);
-                                setIsProcessing(false);
-                                setRequestUrl('');
-                            } catch (error) {
-                                setError('Failed to calculate claimable amount');
-                                setIsPolling(false);
-                                setIsProcessing(false);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('Polling error:', error);
-                }
-            }, 2000);
+    const handleClaim = async (tweet: Tweet) => {
+        if (!tweet.isVerified) {
+            alert('Please verify the tweet first');
+            return;
         }
 
-        return () => {
-            if (pollInterval) {
-                clearInterval(pollInterval);
+        try {
+            setIsClaimProcessing(true);
+            setClaimError(null);
+
+            const response = await fetch('/api/claim', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: tweet.username,
+                    amount: tweet.claimableAmount,
+                    tweetId: tweet.id
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to claim reward');
             }
-        };
-    }, [isPolling]);
+
+            setTweets(prevTweets => prevTweets.filter(t => t.id !== tweet.id));
+            alert('Reward claimed successfully!');
+
+        } catch (error) {
+            console.error('Error claiming reward:', error);
+            setClaimError(error instanceof Error ? error.message : 'Failed to claim reward');
+        } finally {
+            setIsClaimProcessing(false);
+        }
+    };
 
     return (
         <div>
             <button onClick={() => router.push('/')}>Back to Home</button>
 
-            <h1>Claim Your Reward</h1>
+            <h1>Redeem your money</h1>
 
-            {error && (
-                <div style={{ color: 'red' }}>
-                    Error: {error}
-                </div>
-            )}
+            {error && <div>Error: {error}</div>}
 
             <form onSubmit={handleUserDetailsSubmit}>
                 <div>
@@ -305,31 +232,51 @@ export default function RedeemMoneyPage() {
                         onChange={(e) => setUserDetails(prev => ({ ...prev, username: e.target.value }))}
                         required
                     />
-                    <button
-                        type="submit"
-                        disabled={isAuthenticating}
-                    >
+                    <button type="submit" disabled={isAuthenticating}>
                         {isAuthenticating ? 'Authenticating...' : 'Authenticate'}
                     </button>
                 </div>
-                {userDetailsError && (
-                    <div style={{ color: 'red' }}>
-                        {userDetailsError}
-                    </div>
-                )}
+                {userDetailsError && <div>{userDetailsError}</div>}
             </form>
 
-            {isAuthenticated && !verificationState.isVerified && (
+            {isAuthenticated && (
                 <div>
-                    <h2>Verify Your Tweet</h2>
-                    <button
-                        onClick={startVerification}
-                        disabled={isProcessing}
-                    >
-                        {isProcessing ? 'Processing...' : 'Start Verification'}
-                    </button>
+                    <h2>Your Tweets to claim</h2>
+                    {tweets.length === 0 ? (
+                        <p>No tweets to claim</p>
+                    ) : (
+                        <div>
+                            {tweets.map(tweet => (
+                                <div key={tweet.id}>
+                                    <p>Tweet: {tweet.content}</p>
+                                    <p>Username: {tweet.username}</p>
+                                    <p>Claimable Amount: {tweet.claimableAmount} USDC</p>
+                                    {!tweet.isVerified ? (
+                                        <button
+                                            onClick={() => startVerification(tweet)}
+                                            disabled={isProcessing && selectedTweet?.id === tweet.id}
+                                        >
+                                            {isProcessing && selectedTweet?.id === tweet.id
+                                                ? 'Claiming...'
+                                                : 'Claim'}
+                                        </button>
+                                    ) : (
+                                        <div>
+                                            <p>Verified ✓</p>
+                                            <button
+                                                onClick={() => handleClaim(tweet)}
+                                                disabled={isClaimProcessing}
+                                            >
+                                                {isClaimProcessing ? 'Claiming...' : 'Claim Reward'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
-                    {requestUrl && !verificationState.isVerified && (
+                    {requestUrl && selectedTweet && (
                         <div>
                             <h3>Scan QR Code to Verify</h3>
                             <QRCode value={requestUrl} />
@@ -339,40 +286,7 @@ export default function RedeemMoneyPage() {
                 </div>
             )}
 
-            {verificationState.isVerified && (
-                <div>
-                    <h2>Verification Successful!</h2>
-                    <div>
-                        <h3>Tweet Details:</h3>
-                        <p>Username: {verificationState.username}</p>
-                        <p>Posted on: {verificationState.date}</p>
-                        <p>Tweet content: {verificationState.post}</p>
-                    </div>
-
-                    {userDetails.username.toLowerCase() === verificationState.username.toLowerCase() ? (
-                        <div>
-                            <h3>Claimable Amount:</h3>
-                            <p>{verificationState.claimableAmount} USDC</p>
-                            <button
-                                onClick={handleClaim}
-                                disabled={isClaimProcessing}
-                            >
-                                {isClaimProcessing ? 'Processing...' : 'Claim Reward'}
-                            </button>
-
-                            {claimError && (
-                                <div style={{ color: 'red' }}>
-                                    Error: {claimError}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div style={{ color: 'red' }}>
-                            <p>The username you entered does not match the verified tweet username. Please update your username to claim the reward.</p>
-                        </div>
-                    )}
-                </div>
-            )}
+            {claimError && <div>Error: {claimError}</div>}
         </div>
     );
 }
