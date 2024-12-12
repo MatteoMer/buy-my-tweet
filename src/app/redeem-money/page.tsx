@@ -168,7 +168,7 @@ export default function RedeemMoneyPage() {
             setIsProcessing(true);
             setRequestUrl('');
 
-            const response = await fetch('/api/reclaim/generate');
+            const response = await fetch('/api/reclaim/generate?app=post');
             const jsonData = await response.json();
 
             if (!jsonData.reclaimProofRequestConfig) {
@@ -224,7 +224,7 @@ export default function RedeemMoneyPage() {
         if (isPolling) {
             pollInterval = setInterval(async () => {
                 try {
-                    const response = await fetch('/api/proof-status');
+                    const response = await fetch('/api/proof-status?app=post');
                     if (!response.ok) {
                         throw new Error('Failed to fetch status');
                     }
