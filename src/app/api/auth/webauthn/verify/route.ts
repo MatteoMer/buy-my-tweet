@@ -12,21 +12,13 @@ const origin = process.env.NEXT_PUBLIC_API_URL || "";
 
 export async function POST(req: Request) {
     try {
-        const { credential, email } = await req.json();
+        const { credential, username } = await req.json();
 
-        if (!email || !email.includes('@')) {
-            return new Response(JSON.stringify({
-                error: 'Valid email is required'
-            }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
 
-        const userId = await getUserIdFromUsername(email);
+        const userId = await getUserIdFromUsername(username);
         if (!userId) {
             return new Response(JSON.stringify({
-                error: 'Email not registered'
+                error: 'username not registered'
             }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },

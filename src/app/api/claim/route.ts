@@ -40,5 +40,6 @@ export async function POST(request: Request) {
 async function processClaimRequest(data: ClaimRequest): Promise<boolean> {
     // Implement your claim processing logic here
     // This is just a placeholder
+
     return true;
 }

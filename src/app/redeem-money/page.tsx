@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import { ReclaimProofRequest, verifyProof } from '@reclaimprotocol/js-sdk';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 interface VerificationState {
     isVerified: boolean;
@@ -34,7 +35,50 @@ export default function RedeemMoneyPage() {
     const [error, setError] = useState<string | null>(null);
     const [claimError, setClaimError] = useState<string | null>(null);
     const [userDetailsError, setUserDetailsError] = useState<string | null>(null);
+    const [isAuthenticating, setIsAuthenticating] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+    const handleWebAuthnLogin = async () => {
+        try {
+            if (!userDetails.username || userDetails.username.length < 3) {
+                setUserDetailsError('Please enter a valid username to login');
+                return;
+            }
+            setIsAuthenticating(true);
+            setError(null);
+            const optionsRes = await fetch('/api/auth/webauthn', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: userDetails.username })
+            });
+            if (!optionsRes.ok) {
+                throw new Error((await optionsRes.json()).error || 'Failed to get authentication options');
+            }
+            const options = await optionsRes.json();
+            const credential = await startAuthentication({ optionsJSON: options.options });
+            const verificationRes = await fetch('/api/auth/webauthn/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ credential, username: userDetails.username }),
+            });
+            if (!verificationRes.ok) {
+                throw new Error('Failed to verify authentication');
+            }
+            const verification = await verificationRes.json();
+            if (verification.verified) {
+                setIsAuthenticated(true);
+            }
+        } catch (err) {
+            console.log(err);
+            setError(err instanceof Error ? err.message : 'Authentication failed');
+        } finally {
+            setIsAuthenticating(false);
+        }
+    };
 
     const handleUserDetailsSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,7 +88,7 @@ export default function RedeemMoneyPage() {
             setUserDetailsError('Please fill in all fields');
             return;
         }
-
+        handleWebAuthnLogin();
     };
 
     const calculateClaimableAmount = async (proofData: { username: string; post: string; date: string }) => {
@@ -114,6 +158,11 @@ export default function RedeemMoneyPage() {
     };
 
     const startVerification = async () => {
+        if (!isAuthenticated) {
+            setError('Please authenticate first');
+            return;
+        }
+
         try {
             setError(null);
             setIsProcessing(true);
@@ -256,6 +305,12 @@ export default function RedeemMoneyPage() {
                         onChange={(e) => setUserDetails(prev => ({ ...prev, username: e.target.value }))}
                         required
                     />
+                    <button
+                        type="submit"
+                        disabled={isAuthenticating}
+                    >
+                        {isAuthenticating ? 'Authenticating...' : 'Authenticate'}
+                    </button>
                 </div>
                 {userDetailsError && (
                     <div style={{ color: 'red' }}>
@@ -264,12 +319,12 @@ export default function RedeemMoneyPage() {
                 )}
             </form>
 
-            {!verificationState.isVerified && (
+            {isAuthenticated && !verificationState.isVerified && (
                 <div>
                     <h2>Verify Your Tweet</h2>
                     <button
                         onClick={startVerification}
-                        disabled={isProcessing || !userDetails.username}
+                        disabled={isProcessing}
                     >
                         {isProcessing ? 'Processing...' : 'Start Verification'}
                     </button>

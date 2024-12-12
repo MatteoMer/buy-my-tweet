@@ -1,6 +1,6 @@
 import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { v4 as uuidv4 } from 'uuid';
-import { getUserIdFromUsername, storeCurrentChallenge } from '@/lib/redis';
+import { getUserCredentials, getUserIdFromUsername, removeUserCredential, storeCurrentChallenge } from '@/lib/redis';
 
 const rpName = 'Buy X post';
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
@@ -13,6 +13,9 @@ export async function POST(req: Request) {
 
         const existingUserId = await getUserIdFromUsername(username);
         if (existingUserId) {
+            // TODO remove
+            const cred = await getUserCredentials(existingUserId)
+            await removeUserCredential(existingUserId, cred[0].credentialID)
             return new Response(JSON.stringify({
                 error: 'username already registered'
             }), {
