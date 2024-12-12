@@ -176,11 +176,6 @@ export default function RedeemMoneyPage() {
     };
 
     const handleClaim = async (tweet: Tweet) => {
-        if (!tweet.isVerified) {
-            alert('Please verify the tweet first');
-            return;
-        }
-
         try {
             setIsClaimProcessing(true);
             setClaimError(null);
