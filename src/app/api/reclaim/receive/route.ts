@@ -7,7 +7,14 @@ export async function POST(request: Request) {
         const rawProof = await request.text();
         const decodedProof = decodeURIComponent(rawProof);
         const proof = JSON.parse(decodedProof) as Proof;
-        console.log('Received proofs:', proof)
+        console.log('Received proof:')
+        console.log('identifier:', proof.identifier)
+        console.log('claimData:', proof.claimData)
+        console.log('signatures:', proof.signatures)
+        console.log('witnesses:', proof.witnesses)
+        console.log('extractedParameterValues:', proof.extractedParameterValues)
+        console.log('publicData:', proof.publicData)
+
 
         try {
             const isProofVerified = await verifyProof(proof)
