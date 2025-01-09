@@ -145,10 +145,7 @@ export default function RedeemMoneyPage() {
                     const response = await fetch(`/api/proof-status`);
                     const data = await response.json();
                     if (data.proof) {
-                        console.log("Proof retrieved:", data.proof);
-                        const isProofVerified = await verifyProof(data.proof.proof);
-
-                        console.log("verified: ", isProofVerified)
+                        console.log("Proof retrieved:", JSON.stringify(data.proof.proof));
                     }
                     setIsProcessing(false);
                     setSelectedTweet(null);
