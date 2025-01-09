@@ -113,6 +113,7 @@ export default function RedeemMoneyPage() {
             setError('Please authenticate first');
             return;
         }
+        console.log("Starting verification"); // Add this
 
         setSelectedTweet(tweet);
 
@@ -133,12 +134,17 @@ export default function RedeemMoneyPage() {
             );
 
             const url = await reclaimProofRequest.getRequestUrl();
+            console.log("Got URL:", url);
+
             setRequestUrl(url);
+
+            console.log("logging")
 
             await reclaimProofRequest.startSession({
                 onSuccess: async (proof) => {
+                    console.log("onSuccess triggered"); // Add this
+                    console.log(JSON.stringify(proof))
                     if (proof && typeof proof !== 'string') {
-                        console.log(JSON.stringify(proof))
                         const isProofVerified = await verifyProof(proof);
 
                         if (isProofVerified) {
