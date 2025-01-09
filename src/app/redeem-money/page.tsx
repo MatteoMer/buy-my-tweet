@@ -142,20 +142,13 @@ export default function RedeemMoneyPage() {
 
             await reclaimProofRequest.startSession({
                 onSuccess: async (proof) => {
-                    console.log("onSuccess triggered"); // Add this
-                    console.log(JSON.stringify(proof))
-                    if (proof && typeof proof !== 'string') {
-                        const isProofVerified = await verifyProof(proof);
+                    const response = await fetch(`/api/proof-status`);
+                    const data = await response.json();
+                    if (data.proof) {
+                        console.log("Proof retrieved:", data.proof);
+                        const isProofVerified = await verifyProof(data.proof);
 
                         if (isProofVerified) {
-                            await fetch('/api/reclaim/receive-proof', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({ proof, tweetId: tweet.id }),
-                            });
-
                             setTweets(prevTweets =>
                                 prevTweets.map(t =>
                                     t.id === tweet.id ? { ...t, isVerified: true } : t
