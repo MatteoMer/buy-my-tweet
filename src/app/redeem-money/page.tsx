@@ -146,15 +146,9 @@ export default function RedeemMoneyPage() {
                     const data = await response.json();
                     if (data.proof) {
                         console.log("Proof retrieved:", data.proof);
-                        const isProofVerified = await verifyProof(data.proof);
+                        const isProofVerified = await verifyProof(data.proof.proof);
 
-                        if (isProofVerified) {
-                            setTweets(prevTweets =>
-                                prevTweets.map(t =>
-                                    t.id === tweet.id ? { ...t, isVerified: true } : t
-                                )
-                            );
-                        }
+                        console.log("verified: ", isProofVerified)
                     }
                     setIsProcessing(false);
                     setSelectedTweet(null);
