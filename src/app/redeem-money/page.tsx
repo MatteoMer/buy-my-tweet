@@ -138,6 +138,7 @@ export default function RedeemMoneyPage() {
             await reclaimProofRequest.startSession({
                 onSuccess: async (proof) => {
                     if (proof && typeof proof !== 'string') {
+                        console.log(JSON.stringify(proof))
                         const isProofVerified = await verifyProof(proof);
 
                         if (isProofVerified) {

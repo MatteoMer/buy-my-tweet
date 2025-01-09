@@ -26,7 +26,7 @@ export async function POST(req: Request) {
             });
         }
 
-        console.log(response);
+        console.log(`response: `, JSON.stringify(response));
         const verification = await verifyRegistrationResponse({
             response,
             expectedChallenge,
