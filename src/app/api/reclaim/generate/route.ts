@@ -63,6 +63,7 @@ async function handleLogin() {
         reclaimProofRequest.setAppCallbackUrl(
             `${process.env.NEXT_PUBLIC_API_URL}/api/reclaim/receive?app=login`
         )
+        reclaimProofRequest.addContext("0x48796C654F7574707574", "test") // 0x48796C654F7574707574 = HyleOutput
 
         const reclaimProofRequestConfig = reclaimProofRequest.toJsonString()
 

@@ -129,6 +129,7 @@ export default function RedeemMoneyPage() {
                 throw new Error('Failed to get proof request configuration');
             }
 
+            console.log(jsonData.reclaimProofRequestConfig)
             const reclaimProofRequest = await ReclaimProofRequest.fromJsonString(
                 jsonData.reclaimProofRequestConfig
             );
