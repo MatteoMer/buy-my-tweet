@@ -133,6 +133,7 @@ export default function RedeemMoneyPage() {
             const reclaimProofRequest = await ReclaimProofRequest.fromJsonString(
                 jsonData.reclaimProofRequestConfig
             );
+            console.log(reclaimProofRequest)
 
             const url = await reclaimProofRequest.getRequestUrl();
             console.log("Got URL:", url);
