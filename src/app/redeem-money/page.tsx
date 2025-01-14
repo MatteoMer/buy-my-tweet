@@ -146,18 +146,103 @@ export default function RedeemMoneyPage() {
                 onSuccess: async (proof) => {
                     const response = await fetch(`/api/proof-status`);
                     const data = await response.json();
+
                     if (data.proof) {
                         console.log("Proof retrieved:", JSON.stringify(data.proof.proof));
                     }
+                    const blobResponse = await fetch('/api/hyle/blob', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            proof: data.proof.proof
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to process blob transaction');
+                    }
+
+                    const blobData = await blobResponse.json();
+
+                    console.log('Transaction sent:', blobData.txHash);
+
+                    const proofResponse = await fetch('/api/hyle/proof', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            proof: data.proof
+                        })
+                    });
+
+                    if (!proofResponse.ok) {
+                        throw new Error('Failed to process proof transaction');
+                    }
+
+                    const proofData = await proofResponse.json();
+                    console.log('Proof transaction sent:', proofData);
+
                     setIsProcessing(false);
                     setSelectedTweet(null);
                     handleClaim(tweet)
                 },
-                onError: (error) => {
+                onError: async (error) => {
+                    const response = await fetch(`/api/proof-status`);
+                    const data = await response.json();
+
+                    console.log(data)
+
+                    let proof = { "identifier": "0x4781e38d9b098eca396249fd266a49f53ed80d1790e5958829cbd90376152571", "claimData": { "provider": "http", "parameters": "{\"additionalClientOptions\":{},\"body\":\"\",\"geoLocation\":\"\",\"headers\":{\"Referer\":\"https://x.com/home\",\"Sec-Fetch-Mode\":\"same-origin\",\"User-Agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1\"},\"method\":\"GET\",\"paramValues\":{\"URL_PARAMS_1\":\"GBSfDNBdZPRdJCfYd3mR7Q\",\"URL_PARAMS_2\":\"%7B%22focalTweetId%22%3A%221798810213522550947%22%2C%22referrer%22%3A%22me%22%2C%22with_rux_injections%22%3Afalse%2C%22rankingMode%22%3A%22Relevance%22%2C%22includePromotedContent%22%3Atrue%2C%22withCommunity%22%3Atrue%2C%22withQuickPromoteEligibilityTweetFields%22%3Atrue%2C%22withBirdwatchNotes%22%3Atrue%2C%22withVoice%22%3Atrue%7D\",\"URL_PARAMS_3\":\"%7B%22profile_label_improvements_pcf_label_in_post_enabled%22%3Afalse%2C%22rweb_tipjar_consumption_enabled%22%3Atrue%2C%22responsive_web_graphql_exclude_directive_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22communities_web_enable_tweet_community_results_fetch%22%3Atrue%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22articles_preview_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Atrue%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22creator_subscriptions_quote_tweet_preview_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22rweb_video_timestamps_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D\",\"URL_PARAMS_GRD\":\"%7B%22withArticleRichContentState%22%3Atrue%2C%22withArticlePlainText%22%3Afalse%2C%22withGrokAnalyze%22%3Afalse%2C%22withDisallowedReplyControls%22%3Afalse%7D\",\"created_at\":\"Thu Jun 06 20:12:29 +0000 2024\",\"full_text\":\"Breaking down the sum-check protocol\\\\n\\\\nFew months ago I did this implementation of the sum-check protocol in Rust, and wanted to make an article about it!\\\\n\\\\nToday is the day, I finally took time to write an introduction to the sum-check protocol! \\\\uD83E\\\\uDEE1\\\\n\\\\nhttps://t.co/Hlul7kWcCU\",\"screen_name\":\"Matteo_Mer\"},\"responseMatches\":[{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"full_text\\\":\\\"{{full_text}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"created_at\\\":\\\"{{created_at}}\\\"\"},{\"invert\":false,\"type\":\"contains\",\"value\":\"\\\"screen_name\\\":\\\"{{screen_name}}\\\"\"}],\"responseRedactions\":[{\"jsonPath\":\"$.data.threaded_conversation_with_injections_v2.instructions[0].entries[0].content.itemContent.tweet_results.result.legacy.full_text\",\"regex\":\"\\\"full_text\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.threaded_conversation_with_injections_v2.instructions[0].entries[0].content.itemContent.tweet_results.result.legacy.created_at\",\"regex\":\"\\\"created_at\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$.data.threaded_conversation_with_injections_v2.instructions[0].entries[0].content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name\",\"regex\":\"\\\"screen_name\\\":\\\"(.*)\\\"\",\"xPath\":\"\"}],\"url\":\"https://x.com/i/api/graphql/{{URL_PARAMS_1}}/TweetDetail?variables={{URL_PARAMS_2}}&features={{URL_PARAMS_3}}&fieldToggles={{URL_PARAMS_GRD}}\"}", "owner": "0xa48adccc20b2e8c0c086509dfdce644de0f1956f", "timestampS": 1733116925, "context": "{\"contextAddress\":\"0x0\",\"contextMessage\":\"sample context\",\"extractedParameters\":{\"URL_PARAMS_1\":\"GBSfDNBdZPRdJCfYd3mR7Q\",\"URL_PARAMS_2\":\"%7B%22focalTweetId%22%3A%221798810213522550947%22%2C%22referrer%22%3A%22me%22%2C%22with_rux_injections%22%3Afalse%2C%22rankingMode%22%3A%22Relevance%22%2C%22includePromotedContent%22%3Atrue%2C%22withCommunity%22%3Atrue%2C%22withQuickPromoteEligibilityTweetFields%22%3Atrue%2C%22withBirdwatchNotes%22%3Atrue%2C%22withVoice%22%3Atrue%7D\",\"URL_PARAMS_3\":\"%7B%22profile_label_improvements_pcf_label_in_post_enabled%22%3Afalse%2C%22rweb_tipjar_consumption_enabled%22%3Atrue%2C%22responsive_web_graphql_exclude_directive_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22communities_web_enable_tweet_community_results_fetch%22%3Atrue%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22articles_preview_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Atrue%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22creator_subscriptions_quote_tweet_preview_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22rweb_video_timestamps_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D\",\"URL_PARAMS_GRD\":\"%7B%22withArticleRichContentState%22%3Atrue%2C%22withArticlePlainText%22%3Afalse%2C%22withGrokAnalyze%22%3Afalse%2C%22withDisallowedReplyControls%22%3Afalse%7D\",\"created_at\":\"Thu Jun 06 20:12:29 +0000 2024\",\"full_text\":\"Breaking down the sum-check protocol\\\\n\\\\nFew months ago I did this implementation of the sum-check protocol in Rust, and wanted to make an article about it!\\\\n\\\\nToday is the day, I finally took time to write an introduction to the sum-check protocol! \\\\uD83E\\\\uDEE1\\\\n\\\\nhttps://t.co/Hlul7kWcCU\",\"screen_name\":\"Matteo_Mer\"},\"providerHash\":\"0x2d4c77912c40a3860f78ac71e81417cd666c08ebe678decf36012ef7fa8b83de\"}", "identifier": "0x4781e38d9b098eca396249fd266a49f53ed80d1790e5958829cbd90376152571", "epoch": 1 }, "signatures": ["0x67dbe84c52da77142d3aebfa571c0ca27a96b0c3ac2542c04b06fb10e0097dc22a80cc17c10d736f6779fba273b5c7c76415081382e814e445188e946083ae111c"], "witnesses": [{ "id": "0x244897572368eadf65bfbc5aec98d8e5443a9072", "url": "wss://witness.reclaimprotocol.org/ws" }], "publicData": {} }
+                    const blobResponse = await fetch('/api/hyle/blob', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            proof
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to process blob transaction');
+                    }
+
+                    const blobData = await blobResponse.json();
+
+                    console.log('Transaction sent:', blobData.txHash);
+
+                    /*
+        const proofResponse = await fetch('/api/hyle/proof', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                proof: proof
+            })
+        });
+
+        if (!proofResponse.ok) {
+            throw new Error('Failed to process proof transaction');
+        }
+
+        const proofData = await proofResponse.json();
+        console.log('Proof transaction sent:', proofData);
+        */
+
+                    setIsProcessing(false);
+                    setSelectedTweet(null);
+                    handleClaim(tweet)
+
+                    /*
                     console.error('Verification failed', error);
                     setError('Verification failed');
                     setIsProcessing(false);
                     setSelectedTweet(null);
+                    */
                 },
             });
         } catch (error) {
