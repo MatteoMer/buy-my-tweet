@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         // Create the proof transaction
         const proofTx: ProofTransaction = {
             contract_name: "reclaim-test",
-            proof: body.proof.proof
+            proof: [...new TextEncoder().encode(JSON.stringify(body.proof))]
         };
 
         const response = await nodeClient.sendTxProof(proofTx);

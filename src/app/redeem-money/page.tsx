@@ -140,7 +140,6 @@ export default function RedeemMoneyPage() {
 
             setRequestUrl(url);
 
-            console.log("logging")
 
             await reclaimProofRequest.startSession({
                 onSuccess: async (proof) => {
@@ -214,24 +213,22 @@ export default function RedeemMoneyPage() {
 
                     console.log('Transaction sent:', blobData.txHash);
 
-                    /*
-        const proofResponse = await fetch('/api/hyle/proof', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                proof: proof
-            })
-        });
+                    const proofResponse = await fetch('/api/hyle/proof', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            proof: proof
+                        })
+                    });
 
-        if (!proofResponse.ok) {
-            throw new Error('Failed to process proof transaction');
-        }
+                    if (!proofResponse.ok) {
+                        throw new Error('Failed to process proof transaction');
+                    }
 
-        const proofData = await proofResponse.json();
-        console.log('Proof transaction sent:', proofData);
-        */
+                    const proofData = await proofResponse.json();
+                    console.log('Proof transaction sent:', proofData);
 
                     setIsProcessing(false);
                     setSelectedTweet(null);

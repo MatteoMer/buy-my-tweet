@@ -22,20 +22,10 @@ function createReclaimBlob(contractName: string, proof: ReclaimProof): Blob {
     const context: ReclaimContext = JSON.parse(proof.claimData.context);
     return {
         contract_name: contractName,
-        data: encodeWithVarint(context.extractedParameters)
+        data: [...new TextEncoder().encode(JSON.stringify(context.extractedParameters))]
     };
 }
 
-function encodeWithVarint(data: any): number[] {
-    const jsonStr = JSON.stringify(data);
-    const contentBuffer = Buffer.from(jsonStr, 'utf8');
-    const lengthVarint = varint.encode(contentBuffer.length);
-    const finalBuffer = Buffer.concat([
-        Buffer.from(lengthVarint),
-        contentBuffer
-    ]);
-    return Array.from(finalBuffer);
-}
 
 export async function POST(request: Request) {
     try {
