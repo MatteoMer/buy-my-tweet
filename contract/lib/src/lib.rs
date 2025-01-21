@@ -1,6 +1,6 @@
+use contract::{execute_contract, BuyMyTweetAction};
 use helpers::get_claim_tweet_input;
-use hyle_sdk::{flatten_blobs, ContractInput, HyleOutput};
-use reclaim::process_reclaim_input;
+use hyle_sdk::HyleOutput;
 
 mod contract;
 mod helpers;
@@ -10,6 +10,7 @@ mod reclaim;
 pub enum ZkvmProcessError {
     NotImplemented,
     ProofDecodingError,
+    ContractError,
 }
 
 /*
@@ -59,7 +60,7 @@ pub struct Processor;
 impl ZkvmProcessor for Processor {
     // TODO: change to your desired input/outputs types
     type Output = HyleOutput;
-    type Input = ContractInput;
+    type Input = BuyMyTweetAction;
 
     //
     fn get_guest_inputs() -> Result<Self::Input, ZkvmProcessError> {
@@ -94,6 +95,7 @@ impl ZkvmProcessor for Processor {
     }
 
     fn prove(input: Self::Input) -> Result<<Processor as ZkvmProcessor>::Output, ZkvmProcessError> {
+        execute_contract(input).map_err(Into::into)
     }
 
     fn process_outputs(output: Self::Output) {
