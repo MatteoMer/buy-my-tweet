@@ -1,4 +1,4 @@
-use hyle_sdk::{flatten_blobs, ContractInput, HyleOutput};
+use hyle_sdk::{flatten_blobs, Blob, ContractInput, HyleOutput};
 use serde::{Deserialize, Serialize};
 
 use crate::{reclaim::reclaim_process_claim_tweet, ZkvmProcessError};
@@ -15,6 +15,7 @@ pub enum BuyMyTweetAction {
 pub enum ContractError {
     NotImplemented,
     InvalidReclaimProof,
+    UserAlreadyRegistered,
 }
 
 impl From<ZkvmProcessError> for ContractError {
@@ -33,7 +34,7 @@ impl From<ContractError> for ZkvmProcessError {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BuyMyTweetMessage {
     content: String,
-    is_sent: bool,
+    status: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -47,6 +48,16 @@ pub struct BuyMyTweetUser {
 pub struct BuyMyTweetState {
     #[serde(default)]
     users: std::collections::HashMap<String, BuyMyTweetUser>,
+}
+
+impl BuyMyTweetMessage {
+    pub fn get_status(&self) -> bool {
+        self.status
+    }
+
+    pub fn update_status(&mut self, status: bool) {
+        self.status = status;
+    }
 }
 
 impl BuyMyTweetState {
@@ -70,13 +81,17 @@ impl BuyMyTweetState {
             .get(user_id)
             .and_then(|user| user.get_message_by_content(content))
     }
+
+    pub fn user_exists(&self, user_id: &str) -> bool {
+        self.users.get(user_id).is_some()
+    }
 }
 
 impl BuyMyTweetUser {
     pub fn add_message(&mut self, content: String) {
         self.messages.push(BuyMyTweetMessage {
             content,
-            is_sent: false,
+            status: false,
         });
     }
 
@@ -123,9 +138,46 @@ fn claim_tweet(input: &ContractInput) -> Result<HyleOutput, ContractError> {
     })
 }
 
+// TODO: maybe add other reclaim proof?
+fn register_user(input: &ContractInput) -> Result<HyleOutput, ContractError> {
+    let mut state: BuyMyTweetState = input.initial_state.clone().into();
+
+    let contract_blob: &Blob = input.blobs.get(input.index.0).expect("could not get index");
+    let contract_data: serde_json::Value =
+        serde_json::from_slice(&contract_blob.data.0).expect("could not get blob data");
+
+    let username = contract_data
+        .get("username")
+        .expect("invalid JSON file, no username field")
+        .to_string();
+    let price: u64 = contract_data
+        .get("price")
+        .expect("invalid JSON file, no price field")
+        .as_u64()
+        .expect("invalid price field");
+
+    if state.user_exists(&username) {
+        return Err(ContractError::UserAlreadyRegistered);
+    }
+
+    state.add_user(username, price);
+
+    reclaim_process_claim_tweet(input, &mut state).map(|_| HyleOutput {
+        version: 1,
+        initial_state: input.initial_state.clone(),
+        next_state: state.into(),
+        identity: input.identity.clone(),
+        index: input.index.clone(),
+        blobs: flatten_blobs(&input.blobs),
+        success: true,
+        program_outputs: vec![],
+        tx_hash: input.tx_hash.clone(),
+    })
+}
 pub fn execute_contract(action: BuyMyTweetAction) -> Result<HyleOutput, ContractError> {
     match action {
         BuyMyTweetAction::Claim { input } => claim_tweet(&input),
+        BuyMyTweetAction::Register { input } => register_user(&input),
         _ => Err(ContractError::NotImplemented),
     }
 }

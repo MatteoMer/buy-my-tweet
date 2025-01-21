@@ -91,6 +91,7 @@ impl ZkvmProcessor for Processor {
     }
 
     fn get_host_inputs() -> Self::Input {
+        // TODO: change with action
         get_claim_tweet_input()
     }
 

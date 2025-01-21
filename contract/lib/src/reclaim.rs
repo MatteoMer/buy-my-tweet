@@ -9,6 +9,7 @@ fn extract_context(input: &[u8]) -> Result<ReclaimContext, Box<dyn std::error::E
     Ok(context)
 }
 
+// Verify that the reclaim proof is valid, and that claim is valid
 pub fn reclaim_process_claim_tweet(
     input: &ContractInput,
     state: &mut BuyMyTweetState,
@@ -35,6 +36,20 @@ pub fn reclaim_process_claim_tweet(
     if proof_context.extracted_parameters != contract_params {
         return Err(ContractError::InvalidReclaimProof);
     }
+
+    // Get the message
+    let Some(message) = state.get_user_message(
+        &proof_context.extracted_parameters.screen_name,
+        &proof_context.extracted_parameters.full_text,
+    ) else {
+        return Err(ContractError::InvalidReclaimProof);
+    };
+
+    // If message is already claimed, return Err
+    if message.get_status() {
+        return Err(ContractError::InvalidReclaimProof);
+    }
+    message.to_owned().update_status(true);
 
     Ok(())
 }
