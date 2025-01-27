@@ -1,15 +1,48 @@
 import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getUserCredentials, getUserIdFromUsername, removeUserCredential, storeCurrentChallenge } from '@/lib/redis';
+import { Blob, BlobTransaction, HyleUtils } from '@/lib/hyle';
+
+const HYLE_NODE_URL = process.env.HYLE_NODE_URL || 'http://localhost:4321'
+
 
 const rpName = 'Buy X post';
 const rpID = new URL(process.env.NEXT_PUBLIC_API_URL || "").hostname;
 
 export async function POST(req: Request) {
     try {
-        const { username } = await req.json();
+        const { username, price } = await req.json();
 
         // TODO: verify reclaim proof
+
+        /* HYLE */
+
+        let blob: Blob = {
+            contract_name: "buy-my-tweet-webauthn",
+            data: [...new TextEncoder().encode(JSON.stringify({ username, price }))]
+        };
+
+        let blobTx: BlobTransaction = {
+            identity: `${username}.buy-my-tweet-webauthn`,
+            blobs: [blob]
+        };
+
+        console.log(blobTx)
+
+        const response = await fetch(`${HYLE_NODE_URL}/v1/tx/send/blob`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(blobTx)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to send blob transaction: ${errorText}`);
+        }
+
+        const txHash = await response.text();
 
         const existingUserId = await getUserIdFromUsername(username);
         if (existingUserId) {
@@ -43,7 +76,7 @@ export async function POST(req: Request) {
             },
             supportedAlgorithmIDs: [-7, -257],
             timeout: 60000,
-            challenge: crypto.getRandomValues(new Uint8Array(32))
+            challenge: txHash
         });
 
         console.log(`userId: ${userId}, username: ${username}`);
