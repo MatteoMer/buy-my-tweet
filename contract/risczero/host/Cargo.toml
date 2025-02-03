@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 methods = { path = "../methods" }
-risc0-zkvm = { version = "1.2.0" }
+risc0-zkvm = { version = "1.2.2" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = "1.0"
 lib = { workspace = true, features = ['risczero'] }
+actix-web = "4.9.0"
+serde_json = "1.0.138"

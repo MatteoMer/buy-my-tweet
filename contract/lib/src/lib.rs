@@ -1,8 +1,8 @@
-use contract::{execute_contract, BuyMyTweetAction};
+use contract::execute_contract;
 use helpers::get_claim_tweet_input;
-use hyle_sdk::HyleOutput;
+use hyle_sdk::{ContractInput, HyleOutput};
 
-mod contract;
+pub mod contract;
 mod helpers;
 mod reclaim;
 
@@ -60,7 +60,7 @@ pub struct Processor;
 impl ZkvmProcessor for Processor {
     // TODO: change to your desired input/outputs types
     type Output = HyleOutput;
-    type Input = BuyMyTweetAction;
+    type Input = ContractInput;
 
     //
     fn get_guest_inputs() -> Result<Self::Input, ZkvmProcessError> {
@@ -90,13 +90,14 @@ impl ZkvmProcessor for Processor {
         }
     }
 
+    // host does not work rn
     fn get_host_inputs() -> Self::Input {
-        // TODO: change with action
+        // TODO: fix
         get_claim_tweet_input()
     }
 
     fn prove(input: Self::Input) -> Result<<Processor as ZkvmProcessor>::Output, ZkvmProcessError> {
-        execute_contract(input).map_err(Into::into)
+        execute_contract(&input).map_err(Into::into)
     }
 
     fn process_outputs(output: Self::Output) {

@@ -7,18 +7,41 @@ interface User {
     price: number;
 }
 
-// TODO: Get from hyle state
-const users: User[] = [
-    { id: 1, name: 'John Doe', username: '@johndoe', price: 100 },
-    { id: 2, name: 'Jane Smith', username: '@janesmith', price: 10 },
-    { id: 3, name: 'Bob Johnson', username: '@bobjohnson', price: 1 },
-    { id: 4, name: 'Alice Brown', username: '@alicebrown', price: 100 },
-];
+interface RawUser {
+    id: string;
+    price: number;
+    messages: string[];
+}
+
+interface ApiResponse {
+    users: {
+        [key: string]: RawUser;
+    };
+}
 
 export async function GET() {
     try {
-        return NextResponse.json({ users }, { status: 200 });
+        const response = await fetch(
+            "http://127.0.0.1:8180/contracts/state?contractName=buy-my-tweet"
+        );
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch data');
+        }
+
+        const data: ApiResponse = await response.json();
+
+        // Transform the data into the expected User format
+        const transformedUsers: User[] = Object.entries(data.users).map(([key, user], index) => ({
+            id: index + 1,
+            name: key.split('.')[0], // Take the first part of the ID before the dot
+            username: `${key}`,
+            price: user.price
+        }));
+
+        return NextResponse.json({ users: transformedUsers }, { status: 200 });
     } catch (error) {
+        console.error('Error fetching users:', error);
         return NextResponse.json(
             { error: 'Failed to fetch users' },
             { status: 500 }

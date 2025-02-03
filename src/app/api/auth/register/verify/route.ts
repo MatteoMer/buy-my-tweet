@@ -14,6 +14,7 @@ export async function POST(req: Request) {
         const response = body.verification
         const userId = body.userId
         const username = body.username
+        const price = body.price
 
         // Get challenge from Redis
         const expectedChallenge = await getCurrentChallenge(userId);
@@ -42,6 +43,22 @@ export async function POST(req: Request) {
                 counter: 0,
                 username, // Store username with the credential
             });
+
+            const blobResponse = await fetch('http://127.0.0.1:8180/blobs/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contract_name: 'buy-my-tweet',
+                    username: `${username}.simple-identity`,
+                    price: price
+                })
+            });
+
+            const blobData = await blobResponse.json();
+            console.log(blobData)
+
 
             return new Response(JSON.stringify({
                 verified: true,

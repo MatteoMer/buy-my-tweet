@@ -20,8 +20,11 @@ const Home = () => {
                     <button style={{ marginRight: "4px" }} onClick={() => handleNavigation('/buy-tweet')}>
                         Buy Tweet
                     </button>
-                    <button onClick={() => handleNavigation('/redeem-money')}>
+                    <button style={{ marginRight: "4px" }} onClick={() => handleNavigation('/redeem-money')}>
                         Redeem Money
+                    </button>
+                    <button onClick={() => handleNavigation('/balances')}>
+                        View Balances
                     </button>
                 </div>
             </div>

@@ -4,7 +4,7 @@ use hyle_sdk::{Blob, ContractInput, StateDigest};
 use std::fs::File;
 use std::io::BufReader;
 
-pub fn get_claim_tweet_input() -> BuyMyTweetAction {
+pub fn get_claim_tweet_input() -> ContractInput {
     let file = File::open("./proof-examples/claim-contract.json").unwrap();
     let reader = BufReader::new(file);
 
@@ -39,14 +39,13 @@ pub fn get_claim_tweet_input() -> BuyMyTweetAction {
         },
     ];
 
-    BuyMyTweetAction::Claim {
-        input: ContractInput {
-            initial_state: StateDigest(vec![]),
-            blobs,
-            identity: hyle_sdk::Identity("buy-my-tweet-verify-reclaim".into()),
-            index: hyle_sdk::BlobIndex(0),
-            private_blob: hyle_sdk::BlobData(vec![]),
-            tx_hash: hyle_sdk::TxHash("".into()),
-        },
+    ContractInput {
+        initial_state: StateDigest(vec![]),
+        blobs,
+        identity: hyle_sdk::Identity("buy-my-tweet-verify-reclaim".into()),
+        index: hyle_sdk::BlobIndex(0),
+        private_input: vec![],
+        tx_hash: hyle_sdk::TxHash("".into()),
+        tx_ctx: None,
     }
 }

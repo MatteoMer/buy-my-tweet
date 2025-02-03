@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { ReclaimProofRequest, verifyProof } from '@reclaimprotocol/js-sdk';
+import { ContractInput, IndexerApiHttpClient } from '@/lib/hyle';
+import { BuyMyTweetState, buyMyTweetStateFromBytes } from '@/lib/contract';
 
 const RegisterPage = () => {
     const router = useRouter();
@@ -87,11 +89,29 @@ const RegisterPage = () => {
 
             const result = await verificationRes.json();
 
+            /*
+            const input: ContractInput = {
+                index: 1, // TODO change?
+                initial_state: "0x" + "00".repeat(32) // change by fetching current state
+
+            }
+            const proofRes = await fetch('/api/prove', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ verification, userId, username, price: priceNumber }),
+            });
+            */
+
             if (result.verified) {
                 alert('Successfully registered user!');
                 setUsername('');
                 setPrice('');
             }
+
+
+
             router.push('/')
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registration failed');

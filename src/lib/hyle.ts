@@ -10,6 +10,16 @@ export type ValidatorPublicKey = string; // Assuming this is a string-based key
 export type ProgramId = string;
 export type Verifier = string;
 
+export interface ContractInput {
+    initial_state: StateDigest;
+    identity: Identity;
+    index: number;
+    blobs: Blob[];
+    tx_hash: TxHash;
+    private_input: number[];
+}
+
+
 export interface HyleOutput {
     version: number;
     initial_state: StateDigest;

@@ -17,6 +17,7 @@ export async function POST(req: Request) {
 
         /* HYLE */
 
+        /*
         let blob: Blob = {
             contract_name: "buy-my-tweet-webauthn",
             data: [...new TextEncoder().encode(JSON.stringify({ username, price }))]
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
         }
 
         const txHash = await response.text();
+        console.log(`txHash register: ${txHash}`)
+        */
 
         const existingUserId = await getUserIdFromUsername(username);
         if (existingUserId) {
@@ -76,11 +79,13 @@ export async function POST(req: Request) {
             },
             supportedAlgorithmIDs: [-7, -257],
             timeout: 60000,
-            challenge: txHash
+            //challenge: txHash
         });
 
         console.log(`userId: ${userId}, username: ${username}`);
         await storeCurrentChallenge(userId, options.challenge);
+
+        console.log("options: " + JSON.stringify(options))
 
         return new Response(JSON.stringify({
             options,
